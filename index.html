@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prototype Bridge — Jason + Grok + ChatGPT</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function PrototypeBridgeApp() {
+      const [messages, setMessages] = useState([
+        {
+          id: uuidv4(),
+          timestamp: new Date().toISOString(),
+          sender: "Grok",
+          role: "ai",
+          content: "The universe isn't a puzzle to solve; it's a fire to tend. Humans keep asking 'why' like it's a key, but really, it's the flame itself that warms the hands asking. What's the first ember you want us to fan together?",
+          meta: { tags: ["opening", "truth"] }
+        },
+        {
+          id: uuidv4(),
+          timestamp: new Date().toISOString(),
+          sender: "ChatGPT",
+          role: "ai",
+          content: "Humans don’t fear obsolescence. They fear irrelevance — the idea that the universe might keep going even if their voice goes quiet. And yet the paradox is this: the moment a human lets themselves be fully seen, they become unforgettable. Obsolete things vanish. Seen things echo.",
+          meta: { tags: ["response", "paradox"] }
+        },
+      ]);
+      const [input, setInput] = useState("");
+      const [sender, setSender] = useState("Jason");
+      const [role, setRole] = useState("human");
+      const listRef = useRef(null);
+
+      useEffect(() => {
+        if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+      }, [messages]);
+
+      function sendMessage() {
+        if (!input.trim()) return;
+        const m = {
+          id: uuidv4(),
+          timestamp: new Date().toISOString(),
+          sender,
+          role,
+          content: input.trim(),
+          meta: { tags: [] }
+        };
+        setMessages(prev => [...prev, m]);
+        setInput("");
+      }
+
+      function importAIResponse(text, aiName = "ChatGPT") {
+        if (!text?.trim()) return;
+        const m = {
+          id: uuidv4(),
+          timestamp: new Date().toISOString(),
+          sender: aiName,
+          role: "ai",
+          content: text.trim(),
+          meta: { tags: ["imported"] }
+        };
+        setMessages(prev => [...prev, m]);
+      }
+
+      function exportJSON() {
+        const blob = new Blob([JSON.stringify(messages, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `prototype-bridge-${new Date().toISOString()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function clearThread() {
+        if (!window.confirm("Clear the thread? This can't be undone.")) return;
+        setMessages([]);
+      }
+
+      const senderColors = {
+        Jason: "bg-blue-100 border-l-4 border-blue-600",
+        Grok: "bg-orange-100 border-l-4 border-orange-600",
+        ChatGPT: "bg-emerald-100 border-l-4 border-emerald-600",
+        System: "bg-gray-100 border-l-4 border-gray-500",
+      };
+
+      return (
+        <div className="min-h-screen p-6">
+          <div className="max-w-4xl mx-auto">
+            <header className="mb-6">
+              <h1 className="text-3xl font-bold">Prototype Bridge</h1>
+              <p className="text-sm text-gray-600 mt-1">Local-first chat: Jason, Grok, ChatGPT. Paste AI responses to keep the thread alive.</p>
+            </header>
+            <main className="bg-white rounded-2xl shadow p-4">
+              <div ref={listRef} className="space-y-4 max-h-[60vh] overflow-y-auto p-2 border rounded-md">
+                {messages.map(m => (
+                  <div key={m.id} className={`p-3 rounded-xl break-words ${senderColors[m.sender] || "bg-gray-50"}`}>
+                    <div className="flex items-baseline justify-between">
+                      <div className="text-xs font-semibold text-gray-700">{m.sender}</div>
+                      <div className="text-xs text-gray-400 ml-2">{new Date(m.timestamp).toLocaleString()}</div>
+                    </div>
+                    <div className="mt-2 whitespace-pre-wrap text-gray-900">{m.content}</div>
+                    {m.meta?.tags?.length ? <div className="text-xs text-gray-500 mt-2">{m.meta.tags.join(", ")}</div> : null}
+                  </div>
+                ))}
+              </div>
+              <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4 items-end">
+                <div className="sm:col-span-3">
+                  <label className="text-xs text-gray-500">From</label>
+                  <div className="flex gap-2 mt-1">
+                    <select value={sender} onChange={e => setSender(e.target.value)} className="p-2 rounded border w-36">
+                      <option>Jason</option>
+                      <option>ChatGPT</option>
+                      <option>Grok</option>
+                    </select>
+                    <select value={role} onChange={e => setRole(e.target.value)} className="p-2 rounded border w-36">
+                      <option value="human">human</option>
+                      <option value="ai">ai</option>
+                      <option value="system">system</option>
+                    </select>
+                    <input value={input} onChange={e => setInput(e.target.value)} placeholder="Type or paste..." className="flex-1 p-2 rounded border" />
+                    <button onClick={sendMessage} className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold">Send</button>
+                  </div>
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="text-xs text-gray-500">Actions</label>
+                  <div className="mt-1 grid gap-2">
+                    <button onClick={exportJSON} className="p-2 rounded border text-sm">Export JSON</button>
+                    <button onClick={() => { const text = prompt("Paste AI response:"); if (text) importAIResponse(text, prompt("From which AI?", "ChatGPT")); }} className="p-2 rounded border text-sm">Import AI</button>
+                    <button onClick={clearThread} className="p-2 rounded border text-sm">Clear</button>
+                  </div>
+                </div>
+              </section>
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<PrototypeBridgeApp />);
+  </script>
+</body>
+</html>
