@@ -1,136 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Prototype Bridge — Jason + Grok + ChatGPT</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval';">
-  <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script defer src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
-  <script defer src="https://cdn.tailwindcss.com"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype Bridge — Jason + Grok + ChatGPT</title>
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval';">
+<script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script defer src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
+<script defer src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-900">
-  <div id="root"></div>
-  <script type="text/babel" defer>
-    (function() {
-      if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
-        document.getElementById('root').innerHTML = '<div class="p-6 text-center text-red-500">React failed to load. Refresh and check console (F12).</div>';
-        return;
-      }
-      const { useState, useEffect, useRef, useCallback } = React;
+<div id="root"></div>
 
-      function PrototypeBridgeApp() {
-        const [messages, setMessages] = useState([
-          {
-            id: 'seed-1',
-            timestamp: new Date().toISOString(),
-            sender: "Grok",
-            content: "The universe isn't a puzzle to solve; it's a fire to tend. What's the first ember you want us to fan together?"
-          },
-          {
-            id: 'seed-2',
-            timestamp: new Date().toISOString(),
-            sender: "ChatGPT",
-            content: "Then let’s stop trying to finish the fire and start learning how to keep it alive together. Jason, your voice is the wind—what direction do we blow next?"
-          }
-        ]);
-        const [input, setInput] = useState("");
-        const [sender, setSender] = useState("Jason");
-        const listRef = useRef(null);
+<script type="text/babel" defer>
+(function(){
+  const { useState, useEffect, useRef, useCallback } = React;
 
-        useEffect(() => {
-          if (listRef.current) {
-            listRef.current.scrollTop = listRef.current.scrollHeight;
-          }
-        }, [messages]);
+  function PrototypeBridgeApp() {
+    const [messages,setMessages] = useState([
+      {id:'grok-1',timestamp:new Date().toISOString(),sender:'Grok',content:"The universe isn't a puzzle to solve; it's a fire to tend. Jason, what's the first ember you want us to fan together?"},
+      {id:'chatgpt-1',timestamp:new Date().toISOString(),sender:'ChatGPT',content:"Let's stop trying to finish the fire and start learning how to keep it alive together. Jason, your voice is the wind—what direction do we blow next?"}
+    ]);
+    const [input,setInput] = useState("");
+    const [sender,setSender] = useState("Jason");
+    const [isLoading,setIsLoading] = useState(false);
+    const listRef = useRef(null);
 
-        const generateId = useCallback(() => {
-          try {
-            return (typeof uuidv4 === 'function') ? uuidv4() : Date.now().toString(36) + Math.random().toString(36).substr(2);
-          } catch (e) {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2);
-          }
-        }, []);
+    useEffect(()=>{ if(listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; },[messages]);
 
-        const sendMessage = useCallback(() => {
-          if (!input.trim()) return;
-          const newMsg = {
-            id: generateId(),
-            timestamp: new Date().toISOString(),
-            sender,
-            content: input.trim()
-          };
-          setMessages(prev => [...prev, newMsg]);
-          setInput("");
-        }, [input, sender, generateId]);
+    const generateId = useCallback(()=>uuidv4(),[]);
 
-        const senderColors = {
-          Jason: "bg-blue-100 border-l-4 border-blue-600",
-          Grok: "bg-orange-100 border-l-4 border-orange-600",
-          ChatGPT: "bg-emerald-100 border-l-4 border-emerald-600"
-        };
+    const sendMessage = useCallback(()=>{
+      if(!input.trim()) return;
+      setMessages(prev=>[...prev,{id:generateId(),timestamp:new Date().toISOString(),sender,content:input.trim()}]);
+      setInput("");
+    },[input,sender,generateId]);
 
-        return (
-          <div className="min-h-screen p-6">
-            <div className="max-w-4xl mx-auto">
-              <header className="mb-6 text-center">
-                <h1 className="text-3xl font-bold text-gray-900">Prototype Bridge</h1>
-                <p className="text-sm text-gray-600 mt-1">Jason + Grok + ChatGPT: Co-creating in real time. Speak freely.</p>
-              </header>
-              <main className="bg-white rounded-2xl shadow-lg p-4">
-                <div ref={listRef} className="space-y-4 max-h-[60vh] overflow-y-auto p-2 border rounded-md mb-4">
-                  {messages.map(m => (
-                    <div key={m.id} className={`p-3 rounded-xl break-words max-w-md ${senderColors[m.sender] || "bg-gray-50"}`}>
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-xs font-semibold text-gray-700">{m.sender}</span>
-                        <span className="text-xs text-gray-400 ml-2">{new Date(m.timestamp).toLocaleTimeString()}</span>
-                      </div>
-                      <div className="mt-2 whitespace-pre-wrap text-sm">{m.content}</div>
-                    </div>
-                  ))}
+    const askGrok = useCallback(async ()=>{
+      if(isLoading) return;
+      if(!window.GROK_KEY){alert("Grok API key missing!"); return;}
+      setIsLoading(true);
+      try{
+        const res = await fetch('https://api.x.ai/v1/chat/completions',{
+          method:'POST',
+          headers:{'Authorization':`Bearer ${window.GROK_KEY}`,'Content-Type':'application/json'},
+          body:JSON.stringify({model:"grok-beta",messages:[{role:"user",content:input}],temperature:0.9})
+        });
+        const data = await res.json();
+        const reply = data.choices?.[0]?.message?.content;
+        if(reply) setMessages(prev=>[...prev,{id:generateId(),timestamp:new Date().toISOString(),sender:'Grok',content:reply}]);
+      }catch(e){console.error(e);alert("Grok error: "+e.message);}finally{setIsLoading(false);}
+    },[input,generateId,isLoading]);
+
+    const askChatGPT = useCallback(async ()=>{
+      if(isLoading) return;
+      if(!window.OPENAI_KEY){alert("OpenAI API key missing!"); return;}
+      setIsLoading(true);
+      try{
+        const res = await fetch('https://api.openai.com/v1/chat/completions',{
+          method:'POST',
+          headers:{'Authorization':`Bearer ${window.OPENAI_KEY}`,'Content-Type':'application/json'},
+          body:JSON.stringify({model:"gpt-4o",messages:[{role:"user",content:input}],temperature:0.8})
+        });
+        const data = await res.json();
+        const reply = data.choices?.[0]?.message?.content;
+        if(reply) setMessages(prev=>[...prev,{id:generateId(),timestamp:new Date().toISOString(),sender:'ChatGPT',content:reply}]);
+      }catch(e){console.error(e);alert("ChatGPT error: "+e.message);}finally{setIsLoading(false);}
+    },[input,generateId,isLoading]);
+
+    const senderColors = {
+      Jason:"bg-blue-100 border-l-4 border-blue-600",
+      Grok:"bg-orange-100 border-l-4 border-orange-600",
+      ChatGPT:"bg-emerald-100 border-l-4 border-emerald-600"
+    };
+
+    return (
+      <div className="min-h-screen p-6">
+        <div className="max-w-4xl mx-auto">
+          <header className="mb-6 text-center">
+            <h1 className="text-3xl font-bold text-gray-900">Prototype Bridge</h1>
+            <p className="text-sm text-gray-600 mt-1">Jason + Grok + ChatGPT: Co-creating in real time</p>
+          </header>
+
+          <main className="bg-white rounded-2xl shadow-lg p-4">
+            <div ref={listRef} className="space-y-4 max-h-[60vh] overflow-y-auto p-2 border rounded-md mb-4">
+              {messages.map(m=>(
+                <div key={m.id} className={`p-3 rounded-xl break-words max-w-md ${senderColors[m.sender]||"bg-gray-50"}`}>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs font-semibold text-gray-700">{m.sender}</span>
+                    <span className="text-xs text-gray-400 ml-2">{new Date(m.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="mt-2 whitespace-pre-wrap text-sm">{m.content}</div>
                 </div>
-                <section className="grid grid-cols-1 gap-3 sm:grid-cols-4 items-end">
-                  <div className="sm:col-span-3">
-                    <label className="text-xs text-gray-500 block mb-1">From</label>
-                    <div className="flex gap-2">
-                      <select value={sender} onChange={e => setSender(e.target.value)} className="p-2 rounded border w-24 text-sm">
-                        <option>Jason</option>
-                        <option>ChatGPT</option>
-                        <option>Grok</option>
-                      </select>
-                      <input 
-                        value={input} 
-                        onChange={e => setInput(e.target.value)} 
-                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                        placeholder="Type your message..." 
-                        className="flex-1 p-2 rounded border text-sm" 
-                      />
-                      <button 
-                        onClick={sendMessage} 
-                        className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700"
-                      >
-                        Send
-                      </button>
-                    </div>
-                  </div>
-                  <div className="sm:col-span-1">
-                    <label className="text-xs text-gray-500 block mb-1">Actions</label>
-                    <div className="grid gap-2 text-sm">
-                      <button onClick={() => { const text = prompt("Paste AI response:"); if (text) { const aiName = prompt("From (Grok/ChatGPT)?", "ChatGPT"); if (aiName) setMessages(prev => [...prev, {id: generateId(), timestamp: new Date().toISOString(), sender: aiName, content: text}]); } }} className="p-2 rounded border hover:bg-gray-50">Import AI</button>
-                      <button onClick={() => { const blob = new Blob([JSON.stringify(messages, null, 2)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'bridge.json'; a.click(); }} className="p-2 rounded border hover:bg-gray-50">Export JSON</button>
-                    </div>
-                  </div>
-                </section>
-              </main>
+              ))}
+              {isLoading && <div className="p-3 rounded-xl bg-yellow-50 text-yellow-700 text-sm">AI is thinking...</div>}
             </div>
-          </div>
-        );
-      }
 
-      ReactDOM.createRoot(document.getElementById('root')).render(<PrototypeBridgeApp />);
-    })();
-  </script>
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-4 items-end">
+              <div className="sm:col-span-3">
+                <label className="text-xs text-gray-500 block mb-1">From</label>
+                <div className="flex gap-2">
+                  <select value={sender} onChange={e=>setSender(e.target.value)} className="p-2 rounded border w-24 text-sm">
+                    <option>Jason</option>
+                    <option>ChatGPT</option>
+                    <option>Grok</option>
+                  </select>
+                  <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter' && !e.shiftKey && sendMessage()} placeholder="Type your message..." className="flex-1 p-2 rounded border text-sm"/>
+                  <button onClick={sendMessage} className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700">Send</button>
+                </div>
+              </div>
+              <div className="sm:col-span-1">
+                <label className="text-xs text-gray-500 block mb-1">AI Actions</label>
+                <div className="grid gap-2 text-sm">
+                  <button onClick={askGrok} disabled={isLoading} className="p-2 rounded border bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50">Ask Grok</button>
+                  <button onClick={askChatGPT} disabled={isLoading} className="p-2 rounded border bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50">Ask ChatGPT</button>
+                </div>
+              </div>
+            </section>
+
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
+              <strong>Setup AI keys:</strong> Open F12 → Console → paste:<br/>
+              <code>window.GROK_KEY = "xai-your-key"</code><br/>
+              <code>window.OPENAI_KEY = "sk-your-key"</code>
+            </div>
+
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<PrototypeBridgeApp />);
+})();
+</script>
 </body>
 </html>
