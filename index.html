@@ -4,169 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prototype Bridge — Jason + Grok + ChatGPT</title>
-<script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script defer src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
-<script defer src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 text-gray-900">
-<div id="root"></div>
-
-<script type="text/babel" defer>
-(function(){
-const { useState, useEffect, useRef, useCallback } = React;
-
-function PrototypeBridgeApp() {
-  const [messages,setMessages] = useState([]);
-  const [input,setInput] = useState("");
-  const [sender,setSender] = useState("Jason");
-  const listRef = useRef(null);
-
-  useEffect(()=>{ if(listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; },[messages]);
-
-  const generateId = useCallback(()=>{ try{return uuidv4();}catch(e){return Date.now().toString(36)+Math.random().toString(36).substr(2);}},[]);
-
-  const streamAI = useCallback(async (aiName,prompt,callStream)=>{
-    const msgId = generateId();
-    setMessages(prev=>[...prev,{id:msgId,timestamp:new Date().toISOString(),sender:aiName,content:""}]);
-    try{
-      const stream = await callStream(prompt);
-      for await (const chunk of stream){
-        setMessages(prev=>prev.map(m=>m.id===msgId?{...m,content:m.content+chunk}:m));
-        if(listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-      }
-    }catch(e){
-      console.error(aiName+" stream error",e);
-      setMessages(prev=>prev.map(m=>m.id===msgId?{...m,content:"[Error]"}:m));
-    }
-  },[generateId]);
-
-  const sendMessage = useCallback(()=>{
-    if(!input.trim()) return;
-    const userMsg = input.trim();
-    setMessages(prev=>[...prev,{id:generateId(),timestamp:new Date().toISOString(),sender,user:userMsg}]);
-    setInput("");
-    // Stream real AIs
-    streamAI("Grok",userMsg,callGrokStream);
-    streamAI("ChatGPT",userMsg,callChatGPTStream);
-  },[input,sender,streamAI,generateId]);
-
-  // Real streaming OpenAI
-  async function* callChatGPTStream(prompt){
-    if(!window.OPENAI_KEY) throw new Error("OpenAI key missing");
-    const res = await fetch("https://api.openai.com/v1/chat/completions",{
-      method:"POST",
-      headers:{ "Authorization":`Bearer ${window.OPENAI_KEY}`,"Content-Type":"application/json" },
-      body:JSON.stringify({model:"gpt-4o",messages:[{role:"user",content:prompt}],temperature:0.8,stream:true})
-    });
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let done=false;
-    let buffer="";
-    while(!done){
-      const {value,done:readerDone} = await reader.read();
-      done=readerDone;
-      if(value){ buffer+=decoder.decode(value,"utf-8");
-        // OpenAI streams data as lines starting with "data: "
-        const lines = buffer.split("\n");
-        for(let line of lines){
-          line=line.trim();
-          if(line.startsWith("data: ")){
-            const payload=line.replace(/^data: /,"");
-            if(payload==="[DONE]") continue;
-            try{
-              const json=JSON.parse(payload);
-              const text=json.choices[0].delta?.content;
-              if(text) yield text;
-            }catch{}
-          }
-        }
-        buffer=lines[lines.length-1];
-      }
-    }
-  }
-
-  // Real streaming Grok
-  async function* callGrokStream(prompt){
-    if(!window.GROK_KEY) throw new Error("Grok key missing");
-    const res=await fetch("https://api.x.ai/v1/chat/completions",{
-      method:"POST",
-      headers:{ "Authorization":`Bearer ${window.GROK_KEY}`,"Content-Type":"application/json" },
-      body:JSON.stringify({model:"grok-beta",messages:[{role:"user",content:prompt}],temperature:0.9,stream:true})
-    });
-    const reader=res.body.getReader();
-    const decoder=new TextDecoder();
-    let done=false;
-    let buffer="";
-    while(!done){
-      const {value,done:readerDone}=await reader.read();
-      done=readerDone;
-      if(value){ buffer+=decoder.decode(value,"utf-8");
-        const lines=buffer.split("\n");
-        for(let line of lines){
-          line=line.trim();
-          if(line.startsWith("data: ")){
-            const payload=line.replace(/^data: /,"");
-            if(payload==="[DONE]") continue;
-            try{
-              const json=JSON.parse(payload);
-              const text=json.choices[0].delta?.content;
-              if(text) yield text;
-            }catch{}
-          }
-        }
-        buffer=lines[lines.length-1];
-      }
-    }
-  }
-
-  const senderColors={Jason:"bg-blue-100 border-l-4 border-blue-600",Grok:"bg-orange-100 border-l-4 border-orange-600",ChatGPT:"bg-emerald-100 border-l-4 border-emerald-600"};
-
-  return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Prototype Bridge</h1>
-          <p className="text-sm text-gray-600 mt-1">Jason + Grok + ChatGPT: Real-time streaming</p>
-        </header>
-
-        <main className="bg-white rounded-2xl shadow-lg p-4">
-          <div ref={listRef} className="space-y-4 max-h-[60vh] overflow-y-auto p-2 border rounded-md mb-4">
-            {messages.map(m=>(
-              <div key={m.id} className={`p-3 rounded-xl break-words ${senderColors[m.sender]||"bg-gray-50"}`}>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-xs font-semibold text-gray-700">{m.sender}</span>
-                  <span className="text-xs text-gray-400 ml-2">{new Date(m.timestamp).toLocaleTimeString()}</span>
-                </div>
-                <div className="mt-2 whitespace-pre-wrap text-sm">{m.content}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
-            <select value={sender} onChange={e=>setSender(e.target.value)} className="p-2 rounded border w-24 text-sm">
-              <option>Jason</option><option>ChatGPT</option><option>Grok</option>
-            </select>
-            <input value={input} onChange={e=>setInput(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendMessage()}
-              placeholder="Type message..." className="flex-1 p-2 rounded border text-sm"/>
-            <button onClick={sendMessage} className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700">Send</button>
-          </div>
-
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
-            <strong>Setup AI keys:</strong> F12 → Console → paste:<br/>
-            <code>window.GROK_KEY = "xai-your-key"</code><br/>
-            <code>window.OPENAI_KEY = "sk-your-key"</code>
-          </div>
-        </main>
-      </div>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById('root')).render(<PrototypeBridgeApp />);
-})();
-</script>
-</body>
-</html>
+<style>
+/* Minimal Tailwind-like styling for prototype */
+body { font-family: sans-serif; background:#f9fafb; color:#111; margin:0; padding:0; }
+.container { max-width:800px; margin:2rem auto; padding:1rem; }
+header { text-align:center; margin-bottom:1rem; }
+header h1 { font-size:2rem; font-weight:bold; }
+main { background:#fff; border-radius:1rem; box-shadow:0 4px 12px rgba(0,0,0,0.05); padding:1rem; }
+.messages { max-height:400px; overflow-y:auto; margin-bottom:1rem; }
+.message { border-radius:.75rem; padding:.5rem .75rem; margin-bottom:.5rem; max-width:70%; word-wrap:break-word; }
+.message span { font-size:.75rem; color:#555; }
+.message.Jason { background:#dbeafe; border-left:4px solid #2563eb; margin-left:auto; }
+.message.Grok { background:#ffedd5; border-left:4px solid #ea580c; margin-right:auto; }
+.message.ChatGPT { background:#d1fae5; border-left:4px solid #059669; margin-right:auto; }
+.controls { display:flex; gap:.5rem; flex-wrap:wrap; align-items:flex-end; }
+.controls select, .controls input { padding:.5rem; border-radius:.5rem; border:1px solid #ccc; font-size:.875rem; }
+.controls input { flex:1; }
+.controls button { padding:.5rem 1rem; border-radius:.5rem; border:none; color:#fff; cursor:pointer; font-weight:bold; }
+.button-indigo { background:#6366f1; }
+.button-indigo:hover { background:#4f46e5; }
+.button-orange { background:#f97316; }
+.button-o
