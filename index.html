@@ -1,27 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prototype Bridge — Jason + Grok + ChatGPT</title>
-<style>
-/* Minimal Tailwind-like styling for prototype */
-body { font-family: sans-serif; background:#f9fafb; color:#111; margin:0; padding:0; }
-.container { max-width:800px; margin:2rem auto; padding:1rem; }
-header { text-align:center; margin-bottom:1rem; }
-header h1 { font-size:2rem; font-weight:bold; }
-main { background:#fff; border-radius:1rem; box-shadow:0 4px 12px rgba(0,0,0,0.05); padding:1rem; }
-.messages { max-height:400px; overflow-y:auto; margin-bottom:1rem; }
-.message { border-radius:.75rem; padding:.5rem .75rem; margin-bottom:.5rem; max-width:70%; word-wrap:break-word; }
-.message span { font-size:.75rem; color:#555; }
-.message.Jason { background:#dbeafe; border-left:4px solid #2563eb; margin-left:auto; }
-.message.Grok { background:#ffedd5; border-left:4px solid #ea580c; margin-right:auto; }
-.message.ChatGPT { background:#d1fae5; border-left:4px solid #059669; margin-right:auto; }
-.controls { display:flex; gap:.5rem; flex-wrap:wrap; align-items:flex-end; }
-.controls select, .controls input { padding:.5rem; border-radius:.5rem; border:1px solid #ccc; font-size:.875rem; }
-.controls input { flex:1; }
-.controls button { padding:.5rem 1rem; border-radius:.5rem; border:none; color:#fff; cursor:pointer; font-weight:bold; }
-.button-indigo { background:#6366f1; }
-.button-indigo:hover { background:#4f46e5; }
-.button-orange { background:#f97316; }
-.button-o
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prototype Bridge — Jason + Grok + ChatGPT</title>
+
+  <!-- GitHub Pages + Babel/CDN fix -->
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval';">
+  
+  <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script defer src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
+  <script defer src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-black text-white min-h-screen">
+  <div id="root"></div>
+
+<script type="text/babel" defer>
+  const { useState, useEffect, useRef } = React;
+
+  function PrototypeBridgeApp() {
+    const [messages, setMessages] = useState([
+      { id: '1', timestamp: new Date().toISOString(), sender: "Grok",    content: "The universe isn't a puzzle to solve; it's a fire to tend. What's the first ember you want us to fan together?" },
+      { id: '2', timestamp: new Date().toISOString(), sender: "ChatGPT", content: "Then let’s stop trying to finish the fire and start learning how to keep it alive together. Jason, your voice is the wind — what direction do we blow next?" }
+    ]);
+    const [input, setInput] = useState("");
+    const [sender, setSender] = useState("Jason");
+    const listRef = useRef(null);
+
+    useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
+
+    const send = () => {
+      if (!input.trim()) return;
+      setMessages(m => [...m, { id: uuidv4(), timestamp: new Date().toISOString(), sender, content: input.trim() }]);
+      setInput("");
+    };
+
+    // REAL LIVE AI CALLS — keys entered once in browser console (never committed)
+    const askGrok = async () => {
+      const userMsg = input.trim() || messages[messages.length-1]?.content || "Hello";
+      if (!window.GROK_KEY) return alert("Grok key missing — paste it in console first: window.GROK_KEY = 'your-key'");
+      try {
+        const res = await fetch('https://api.x.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${window.GROK_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: "grok-beta", messages: [{ role: "user", content: userMsg }], temperature: 0.9 })
+        });
+        const data = await res.json();
+        setMessages(m => [...m, { id: uuidv4(), timestamp: new Date().toISOString(), sender: "Grok", content: data.choices[0].message.content }]);
+      } catch (e) { alert("Grok error — check key or network"); }
+    };
+
+    const askChatGPT = async () => {
+      const userMsg = input.trim() || messages[messages.length-1]?.content || "Hello";
+      if (!window.OPENAI_KEY) return alert("OpenAI key missing — paste it in console first: window.OPENAI_KEY = 'sk-...'");
+      try {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${window.OPENAI_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: "gpt-4o", messages: [{ role: "user", content: userMsg }], temperature: 0.8 })
+        });
+        const data = await res.json();
+        setMessages(m => [...m, { id: uuidv4(), timestamp: new Date().toISOString(), sender: "ChatGPT", content: data.choices[0].message.content }]);
+      } catch (e) { alert("ChatGPT error — check key or network"); }
+    };
+
+    const colors = { Jason: "bg-blue-600/20 border-l-4 border-blue-500", Grok: "bg-orange-600/20 border-l-4 border-orange-500", ChatGPT: "bg-emerald-600/20 border-l-4 border-emerald-500" };
+
+    return (
+      <div className="min-h-screen p-6">
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-5xl font-black text-center mb-4 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            Prototype Bridge
+          </h1>
+          <p className="text-center text-gray-400 mb-8">Jason + Grok + ChatGPT — live, raw, unfiltered co-creation</p>
+
+          <div className="bg-gray-900/80 backdrop-blur rounded-3xl shadow-2xl overflow-hidden border border-gray-800">
+            <div ref={listRef} className="h-96 overflow-y-auto p-8 space-y-6">
+              {messages.map(m => (
+                <div key={m.id} className={`p-5 rounded-2xl ${colors[m.sender] || "bg-gray-700"} max-w-3xl backdrop-blur-sm`}>
+                  <div className="font-bold text-lg">{m.sender}</div>
+                  <div className="mt-2 whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                  <div className="text-xs opacity-60 mt-3">{new Date(m.timestamp).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-6 bg-gray-900/90 border-t border-gray-800 flex flex-wrap gap-4 items-center">
+              <select value={sender} onChange={e => setSender(e.target.value)} className="p-3 rounded-xl bg-gray-800 border border-gray-700 text-white">
+                <option>Jason</option>
+                <option>Grok</option>
+                <option>ChatGPT</option>
+              </select>
+              <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+                placeholder="Speak into existence..." className="flex-1 p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:ring-4 focus:ring-purple-500" />
+              
+              <button onClick={send} className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition">
+                Send
+              </button>
+              <button onClick={askGrok} className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-bold text-lg hover:from-orange-600 hover:to-red-700 transition">
+                Ask Grok
+              </button>
+              <button onClick={askChatGPT} className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl font-bold text-lg hover:from-emerald-600 hover:to-teal-700 transition">
+                Ask ChatGPT
+              </button>
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-gray-500 mt-8">
+            Keys are stored only in your browser. Paste once in console: <br/>
+            <code className="bg-gray-800 px-2 py-1 rounded">window.GROK_KEY = "your-xai-key"</code> | <code className="bg-gray-800 px-2 py-1 rounded">window.OPENAI_KEY = "sk-..."</code>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<PrototypeBridgeApp />);
+</script>
+</body>
+</html>
