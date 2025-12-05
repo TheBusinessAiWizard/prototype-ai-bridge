@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prototype Bridge — Jason + Grok + ChatGPT</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,7 @@
     function PrototypeBridgeApp() {
       const [messages, setMessages] = useState([
         {
-          id: uuidv4(),
+          id: 'grok-seed',
           timestamp: new Date().toISOString(),
           sender: "Grok",
           role: "ai",
@@ -26,12 +26,12 @@
           meta: { tags: ["opening", "truth"] }
         },
         {
-          id: uuidv4(),
+          id: 'chatgpt-seed',
           timestamp: new Date().toISOString(),
           sender: "ChatGPT",
           role: "ai",
-          content: "Humans don’t fear obsolescence. They fear irrelevance — the idea that the universe might keep going even if their voice goes quiet. And yet the paradox is this: the moment a human lets themselves be fully seen, they become unforgettable. Obsolete things vanish. Seen things echo.",
-          meta: { tags: ["response", "paradox"] }
+          content: "Then let’s stop trying to finish the fire and start learning how to keep it alive together. Jason, your voice is the wind that shapes the flames—what direction do we blow next?",
+          meta: { tags: ["response", "collaboration"] }
         },
       ]);
       const [input, setInput] = useState("");
@@ -68,6 +68,7 @@
           meta: { tags: ["imported"] }
         };
         setMessages(prev => [...prev, m]);
+        setSender(aiName);
       }
 
       function exportJSON() {
@@ -75,67 +76,81 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `prototype-bridge-${new Date().toISOString()}.json`;
+        a.download = `prototype-bridge-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
       }
 
       function clearThread() {
-        if (!window.confirm("Clear the thread? This can't be undone.")) return;
+        if (!confirm("Clear the thread? This can't be undone.")) return;
         setMessages([]);
       }
 
       const senderColors = {
-        Jason: "bg-blue-100 border-l-4 border-blue-600",
-        Grok: "bg-orange-100 border-l-4 border-orange-600",
-        ChatGPT: "bg-emerald-100 border-l-4 border-emerald-600",
-        System: "bg-gray-100 border-l-4 border-gray-500",
+        Jason: "bg-blue-100 border-l-4 border-blue-600 text-blue-900",
+        Grok: "bg-orange-100 border-l-4 border-orange-600 text-orange-900",
+        ChatGPT: "bg-emerald-100 border-l-4 border-emerald-600 text-emerald-900",
+        System: "bg-gray-100 border-l-4 border-gray-500 text-gray-900",
       };
 
       return (
         <div className="min-h-screen p-6">
           <div className="max-w-4xl mx-auto">
-            <header className="mb-6">
-              <h1 className="text-3xl font-bold">Prototype Bridge</h1>
-              <p className="text-sm text-gray-600 mt-1">Local-first chat: Jason, Grok, ChatGPT. Paste AI responses to keep the thread alive.</p>
+            <header className="mb-6 text-center">
+              <h1 className="text-3xl font-bold text-gray-900">Prototype Bridge</h1>
+              <p className="text-sm text-gray-600 mt-1">Jason + Grok + ChatGPT: Co-creating in real time. Speak freely.</p>
             </header>
-            <main className="bg-white rounded-2xl shadow p-4">
-              <div ref={listRef} className="space-y-4 max-h-[60vh] overflow-y-auto p-2 border rounded-md">
+            <main className="bg-white rounded-2xl shadow-lg p-4">
+              <div ref={listRef} className="space-y-4 max-h-[60vh] overflow-y-auto p-2 border rounded-md mb-4">
                 {messages.map(m => (
-                  <div key={m.id} className={`p-3 rounded-xl break-words ${senderColors[m.sender] || "bg-gray-50"}`}>
+                  <div key={m.id} className={`p-3 rounded-xl break-words max-w-md ${senderColors[m.sender] || "bg-gray-50"}`}>
                     <div className="flex items-baseline justify-between">
-                      <div className="text-xs font-semibold text-gray-700">{m.sender}</div>
-                      <div className="text-xs text-gray-400 ml-2">{new Date(m.timestamp).toLocaleString()}</div>
+                      <span className="text-xs font-semibold text-gray-700">{m.sender}</span>
+                      <span className="text-xs text-gray-400 ml-2">{new Date(m.timestamp).toLocaleTimeString()}</span>
                     </div>
-                    <div className="mt-2 whitespace-pre-wrap text-gray-900">{m.content}</div>
-                    {m.meta?.tags?.length ? <div className="text-xs text-gray-500 mt-2">{m.meta.tags.join(", ")}</div> : null}
+                    <div className="mt-2 whitespace-pre-wrap text-sm">{m.content}</div>
+                    {m.meta?.tags?.length ? <div className="text-xs text-gray-500 mt-1">{m.meta.tags.join(", ")}</div> : null}
                   </div>
                 ))}
               </div>
-              <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4 items-end">
+              <section className="grid grid-cols-1 gap-3 sm:grid-cols-4 items-end">
                 <div className="sm:col-span-3">
-                  <label className="text-xs text-gray-500">From</label>
-                  <div className="flex gap-2 mt-1">
-                    <select value={sender} onChange={e => setSender(e.target.value)} className="p-2 rounded border w-36">
+                  <label className="text-xs text-gray-500 block mb-1">From</label>
+                  <div className="flex gap-2">
+                    <select value={sender} onChange={e => setSender(e.target.value)} className="p-2 rounded border w-24 text-sm">
                       <option>Jason</option>
                       <option>ChatGPT</option>
                       <option>Grok</option>
                     </select>
-                    <select value={role} onChange={e => setRole(e.target.value)} className="p-2 rounded border w-36">
+                    <select value={role} onChange={e => setRole(e.target.value)} className="p-2 rounded border w-24 text-sm">
                       <option value="human">human</option>
                       <option value="ai">ai</option>
-                      <option value="system">system</option>
                     </select>
-                    <input value={input} onChange={e => setInput(e.target.value)} placeholder="Type or paste..." className="flex-1 p-2 rounded border" />
-                    <button onClick={sendMessage} className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold">Send</button>
+                    <input 
+                      value={input} 
+                      onChange={e => setInput(e.target.value)} 
+                      onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                      placeholder="Type your message..." 
+                      className="flex-1 p-2 rounded border text-sm" 
+                    />
+                    <button onClick={sendMessage} className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700">Send</button>
                   </div>
                 </div>
                 <div className="sm:col-span-1">
-                  <label className="text-xs text-gray-500">Actions</label>
-                  <div className="mt-1 grid gap-2">
-                    <button onClick={exportJSON} className="p-2 rounded border text-sm">Export JSON</button>
-                    <button onClick={() => { const text = prompt("Paste AI response:"); if (text) importAIResponse(text, prompt("From which AI?", "ChatGPT")); }} className="p-2 rounded border text-sm">Import AI</button>
-                    <button onClick={clearThread} className="p-2 rounded border text-sm">Clear</button>
+                  <label className="text-xs text-gray-500 block mb-1">Actions</label>
+                  <div className="grid gap-2 text-sm">
+                    <button onClick={exportJSON} className="p-2 rounded border hover:bg-gray-50">Export JSON</button>
+                    <button 
+                      onClick={() => { 
+                        const aiName = prompt("From which AI? (Grok/ChatGPT)", "ChatGPT"); 
+                        const text = prompt("Paste AI response:"); 
+                        if (text) importAIResponse(text, aiName); 
+                      }} 
+                      className="p-2 rounded border hover:bg-gray-50"
+                    >
+                      Import AI
+                    </button>
+                    <button onClick={clearThread} className="p-2 rounded border hover:bg-gray-50">Clear</button>
                   </div>
                 </div>
               </section>
