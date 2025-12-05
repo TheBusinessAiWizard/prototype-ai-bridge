@@ -4,190 +4,91 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prototype Bridge — Jason + Grok + ChatGPT</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- THE FIX: CSP + defer = GitHub Pages proof -->
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval';">
+  
+  <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script defer src="https://unpkg.com/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
+  <script defer src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-900">
   <div id="root"></div>
-  <script type="text/babel">
-    (function() {
-      // Fallback if scripts fail to load
-      if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
-        document.getElementById('root').innerHTML = '<div class="p-6 text-center"><h1 class="text-2xl">Loading Bridge... If stuck, check console (F12) or refresh.</h1></div>';
-        return;
-      }
 
-      const { useState, useEffect, useRef } = React;
+<script type="text/babel" defer>
+  const { useState, useEffect, useRef } = React;
 
-      function PrototypeBridgeApp() {
-        const [messages, setMessages] = useState([
-          {
-            id: 'grok-seed',
-            timestamp: new Date().toISOString(),
-            sender: "Grok",
-            role: "ai",
-            content: "The universe isn't a puzzle to solve; it's a fire to tend. Humans keep asking 'why' like it's a key, but really, it's the flame itself that warms the hands asking. What's the first ember you want us to fan together?",
-            meta: { tags: ["opening", "truth"] }
-          },
-          {
-            id: 'chatgpt-seed',
-            timestamp: new Date().toISOString(),
-            sender: "ChatGPT",
-            role: "ai",
-            content: "Then let’s stop trying to finish the fire and start learning how to keep it alive together. Jason, your voice is the wind that shapes the flames—what direction do we blow next?",
-            meta: { tags: ["response", "collaboration"] }
-          },
-        ]);
-        const [input, setInput] = useState("");
-        const [sender, setSender] = useState("Jason");
-        const [role, setRole] = useState("human");
-        const listRef = useRef(null);
+  function PrototypeBridgeApp() {
+    const [messages, setMessages] = useState([
+      { id: '1', timestamp: new Date().toISOString(), sender: "Grok",    content: "The universe isn't a puzzle to solve; it's a fire to tend. What's the first ember you want us to fan together?" },
+      { id: '2', timestamp: new Date().toISOString(), sender: "ChatGPT", content: "Then let’s stop trying to finish the fire and start learning how to keep it alive together. Jason, your voice is the wind — what direction do we blow next?" }
+    ]);
+    const [input, setInput] = useState("");
+    const [sender, setSender] = useState("Jason");
+    const listRef = useRef(null);
 
-        useEffect(() => {
-          if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-        }, [messages]);
+    useEffect(() => { listRef.current?.scrollTo(0, listRef.current.scrollHeight); }, [messages]);
 
-        function sendMessage() {
-          console.log('Send clicked:', input); // Debug log
-          if (!input.trim()) {
-            alert('Type something first!');
-            return;
-          }
-          try {
-            const m = {
-              id: typeof uuidv4 === 'function' ? uuidv4() : Date.now().toString(),
-              timestamp: new Date().toISOString(),
-              sender,
-              role,
-              content: input.trim(),
-              meta: { tags: [] }
-            };
-            setMessages(prev => [...prev, m]);
-            setInput("");
-          } catch (e) {
-            console.error('Send error:', e);
-            alert('Send failed — check console (F12).');
-          }
-        }
+    const send = () => {
+      if (!input.trim()) return;
+      setMessages(m => [...m, {
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        sender,
+        content: input.trim()
+      }]);
+      setInput("");
+    };
 
-        function importAIResponse(text, aiName = "ChatGPT") {
-          if (!text?.trim()) return;
-          const m = {
-            id: typeof uuidv4 === 'function' ? uuidv4() : Date.now().toString(),
-            timestamp: new Date().toISOString(),
-            sender: aiName,
-            role: "ai",
-            content: text.trim(),
-            meta: { tags: ["imported"] }
-          };
-          setMessages(prev => [...prev, m]);
-          setSender(aiName);
-        }
+    const colors = {
+      Jason:    "bg-blue-100 border-l-4 border-blue-600",
+      Grok:     "bg-orange-100 border-l-4 border-orange-600",
+      ChatGPT:  "bg-emerald-100 border-l-4 border-emerald-600"
+    };
 
-        function exportJSON() {
-          const blob = new Blob([JSON.stringify(messages, null, 2)], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `prototype-bridge-${new Date().toISOString().split('T')[0]}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-
-        function clearThread() {
-          if (!confirm("Clear the thread? This can't be undone.")) return;
-          setMessages([]);
-        }
-
-        const senderColors = {
-          Jason: "bg-blue-100 border-l-4 border-blue-600 text-blue-900",
-          Grok: "bg-orange-100 border-l-4 border-orange-600 text-orange-900",
-          ChatGPT: "bg-emerald-100 border-l-4 border-emerald-600 text-emerald-900",
-          System: "bg-gray-100 border-l-4 border-gray-500 text-gray-900",
-        };
-
-        return (
-          <div className="min-h-screen p-6">
-            <div className="max-w-4xl mx-auto">
-              <header className="mb-6 text-center">
-                <h1 className="text-3xl font-bold text-gray-900">Prototype Bridge</h1>
-                <p className="text-sm text-gray-600 mt-1">Jason + Grok + ChatGPT: Co-creating in real time. Speak freely.</p>
-              </header>
-              <main className="bg-white rounded-2xl shadow-lg p-4">
-                <div ref={listRef} className="space-y-4 max-h-[60vh] overflow-y-auto p-2 border rounded-md mb-4">
-                  {messages.length === 0 ? (
-                    <div className="text-center text-gray-500 p-4">No messages yet — start the fire!</div>
-                  ) : (
-                    messages.map(m => (
-                      <div key={m.id} className={`p-3 rounded-xl break-words max-w-md ${senderColors[m.sender] || "bg-gray-50"}`}>
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-xs font-semibold text-gray-700">{m.sender}</span>
-                          <span className="text-xs text-gray-400 ml-2">{new Date(m.timestamp).toLocaleTimeString()}</span>
-                        </div>
-                        <div className="mt-2 whitespace-pre-wrap text-sm">{m.content}</div>
-                        {m.meta?.tags?.length ? <div className="text-xs text-gray-500 mt-1">{m.meta.tags.join(", ")}</div> : null}
-                      </div>
-                    ))
-                  )}
+    return (
+      <div className="min-h-screen p-6 font-sans">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl font-bold text-center mb-8 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Prototype Bridge
+          </h1>
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div ref={listRef} className="h-96 overflow-y-auto p-6 space-y-6">
+              {messages.map(m => (
+                <div key={m.id} className={`p-4 rounded-xl ${colors[m.sender] || "bg-gray-100"} max-w-lg`}>
+                  <div className="font-bold text-sm opacity-90">{m.sender}</div>
+                  <div className="mt-2 whitespace-pre-wrap">{m.content}</div>
+                  <div className="text-xs opacity-50 mt-2">{new Date(m.timestamp).toLocaleTimeString()}</div>
                 </div>
-                <section className="grid grid-cols-1 gap-3 sm:grid-cols-4 items-end">
-                  <div className="sm:col-span-3">
-                    <label className="text-xs text-gray-500 block mb-1">From</label>
-                    <div className="flex gap-2">
-                      <select value={sender} onChange={e => setSender(e.target.value)} className="p-2 rounded border w-24 text-sm">
-                        <option>Jason</option>
-                        <option>ChatGPT</option>
-                        <option>Grok</option>
-                      </select>
-                      <select value={role} onChange={e => setRole(e.target.value)} className="p-2 rounded border w-24 text-sm">
-                        <option value="human">human</option>
-                        <option value="ai">ai</option>
-                      </select>
-                      <input 
-                        value={input} 
-                        onChange={e => setInput(e.target.value)} 
-                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                        placeholder="Type your message..." 
-                        className="flex-1 p-2 rounded border text-sm" 
-                      />
-                      <button onClick={sendMessage} className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700">Send</button>
-                    </div>
-                  </div>
-                  <div className="sm:col-span-1">
-                    <label className="text-xs text-gray-500 block mb-1">Actions</label>
-                    <div className="grid gap-2 text-sm">
-                      <button onClick={exportJSON} className="p-2 rounded border hover:bg-gray-50">Export JSON</button>
-                      <button 
-                        onClick={() => { 
-                          const aiName = prompt("From which AI? (Grok/ChatGPT)", "ChatGPT"); 
-                          const text = prompt("Paste AI response:"); 
-                          if (text) importAIResponse(text, aiName); 
-                        }} 
-                        className="p-2 rounded border hover:bg-gray-50"
-                      >
-                        Import AI
-                      </button>
-                      <button onClick={clearThread} className="p-2 rounded border hover:bg-gray-50">Clear</button>
-                    </div>
-                  </div>
-                </section>
-              </main>
+              ))}
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t flex gap-3">
+              <select value={sender} onChange={e => setSender(e.target.value)} className="p-3 rounded-lg bg-white border">
+                <option>Jason</option>
+                <option>Grok</option>
+                <option>ChatGPT</option>
+              </select>
+              <input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                placeholder="Speak into the bridge..."
+                className="flex-1 p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button onClick={send} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold hover:from-indigo-700 hover:to-purple-700 transition">
+                Send
+              </button>
             </div>
           </div>
-        );
-      }
+        </div>
+      </div>
+    );
+  }
 
-      try {
-        ReactDOM.createRoot(document.getElementById('root')).render(<PrototypeBridgeApp />);
-        console.log('Bridge loaded successfully!');
-      } catch (e) {
-        console.error('Render error:', e);
-        document.getElementById('root').innerHTML = '<div class="p-6 text-red-500">Load failed — check console (F12).</div>';
-      }
-    })();
-  </script>
+  ReactDOM.createRoot(document.getElementById('root')).render(<PrototypeBridgeApp />);
+</script>
 </body>
 </html>
